@@ -46,7 +46,7 @@ kubectx -               # 切回上一个 context
 
 kind 节点访问不了本机 `127.0.0.1:1087` 代理，所以镜像要在宿主机 `docker pull` 后再导入节点。不要跑上游 `make deploy-kind`：它会 **重建** 名为 `agent-sandbox` 的集群。
 
-已安装版本：`v1.0.5`（`sandbox-with-extensions.yaml`）。
+已安装版本：`v1.0.5`（`sandbox-with-extensions.yaml`）。CR 与 Operator 调谐说明见 [`docs/agent-sandbox-operator.md`](./docs/agent-sandbox-operator.md)。
 
 ```bash
 kubectx kind-k8s-lab
