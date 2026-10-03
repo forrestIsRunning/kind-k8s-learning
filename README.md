@@ -2,7 +2,7 @@
 
 本地 kind 学习集群：1 个 control-plane + 1 个 worker。
 
-kind 里的 control-plane 就是常见文档里的 master。kubeconfig 写在仓库内 `.kube/config`，不写入 `~/.kube/config`，不进入 `kubectx` 列表。
+kind 里的 control-plane 就是常见文档里的 master。`make create` 会把 context `kind-k8s-lab` 加进 `kubectx`，但保持当前 context 不变。
 
 ## 前置条件
 
@@ -27,33 +27,16 @@ make context-check
 make delete
 ```
 
-`make create` 会等到两个节点 Ready。`make context-check` 应显示系统 current-context 仍是原来的 EKS / 其它集群，lab current-context 才是 `kind-k8s-lab`。
-
-在该仓库目录学习时，可以把 kubeconfig 限定在当前 shell：
+`make create` 等到两个节点 Ready，再 `make register`：把 `kind-k8s-lab` 写入 `~/.kube/config`，然后把 current-context 切回原来的集群。
 
 ```bash
-export KUBECONFIG="$PWD/.kube/config"
-kubectl get nodes -o wide
+kubectx                 # 列表里应有 kind-k8s-lab
+kubectx kind-k8s-lab    # 切到学习集群
+kubectl get nodes
+kubectx -               # 切回上一个 context
 ```
 
-新开终端、不设置 `KUBECONFIG` 时，默认仍使用 `~/.kube/config`。
-
-## 不要做
-
-不要执行：
-
-```bash
-kind export kubeconfig --name k8s-lab
-kubectl config use-context kind-k8s-lab
-```
-
-这两条会改 `~/.kube/config`，把 `kind-k8s-lab` 写进 `kubectx`，并可能切走当前生产 context。
-
-需要导出时指定文件：
-
-```bash
-kind export kubeconfig --name k8s-lab --kubeconfig "$PWD/.kube/config"
-```
+不要直接跑 `kind export kubeconfig --name k8s-lab`。这条会把 current-context 切到 `kind-k8s-lab`。用 `make register`。
 
 ## 集群配置
 
