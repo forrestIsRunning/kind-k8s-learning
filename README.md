@@ -59,3 +59,25 @@ kubectl apply -f manifests/agent-sandbox/hello-sandbox.yaml
 kubectl get sandbox,pod,svc -n agent-sandbox-demo
 kubectl exec -n agent-sandbox-demo hello-busybox -- echo ok
 ```
+
+## OpenSandbox Operator（阿里，sandbox.opensandbox.io）
+
+Helm chart `base-1.1.0` + `opensandbox-controller-1.1.0`。CR 与调谐说明见 [`docs/opensandbox-operator.md`](./docs/opensandbox-operator.md)。源码 chart 默认在 `~/Projects/experiments/sandbox/OpenSandbox`。
+
+```bash
+make opensandbox          # CRD + controller（需 SANDBOX_SRC）
+make opensandbox-hello    # Pool + BatchSandbox hello-busybox
+kubectl get pool,batchsandbox,pod -n opensandbox
+```
+
+不要装 `fast-sandbox` CRD。本仓库 hello 走 Pool 分配，不创建 `name-idx` Pod。
+
+## CubeSandbox 控制面（腾讯，0 CRD）
+
+Helm chart `cube-0.7.2`，**只开控制面**。Mac Docker Desktop / kind 节点没有 `/dev/kvm`，不要开 `cubeNode` 或 PVM bootstrap。控制面 Ready 不等于 microVM 在跑。说明见 [`docs/cubesandbox-controlplane.md`](./docs/cubesandbox-controlplane.md)。
+
+```bash
+make cubesandbox-controlplane
+kubectl -n cubesandbox-system get deploy,sts,pods
+# 预期：0 个 DaemonSet；GET /sandboxes 返回 []
+```

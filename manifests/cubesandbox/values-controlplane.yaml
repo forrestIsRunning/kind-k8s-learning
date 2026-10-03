@@ -1,0 +1,73 @@
+# CubeSandbox control-plane only, for kind k8s-lab on Docker Desktop.
+# Compute plane (cube-node / PVM / KVM) is off: Mac / linuxkit has no /dev/kvm.
+# Do not set cubeNode.enabled=true on this cluster.
+#
+# Lab-only passwords. Override before any non-throwaway deploy.
+controlPlane:
+  enabled: true
+  master:
+    enabled: true
+    replicas: 1
+    persistence:
+      enabled: true
+      size: 2Gi
+  api:
+    enabled: true
+    replicas: 1
+
+cubeNode:
+  enabled: false
+
+bootstrap:
+  pvmHostKernel:
+    enabled: false
+  nodeInit:
+    enabled: false
+
+webui:
+  enabled: false
+
+cubeOps:
+  enabled: false
+
+cubeProxy:
+  enabled: false
+  configureClusterDNS: false
+  ingress:
+    enabled: false
+
+lifecycleManager:
+  enabled: false
+
+cubeEgress:
+  enabled: false
+
+cubeS3lvol:
+  enabled: false
+
+minio:
+  enabled: false
+
+mysql:
+  enabled: true
+  password: k8slab-mysql-password
+  rootPassword: k8slab-mysql-root-password
+  persistence:
+    enabled: true
+    size: 2Gi
+
+redis:
+  enabled: true
+  password: k8slab-redis-password
+  persistence:
+    enabled: true
+    size: 1Gi
+
+placement:
+  controlPlane:
+    nodeSelector:
+      cube.tencent.com/cube-control: "true"
+
+cubemastercli:
+  enabled: true
+  replicas: 1

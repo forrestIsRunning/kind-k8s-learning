@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opensandbox
+---
+apiVersion: sandbox.opensandbox.io/v1alpha1
+kind: Pool
+metadata:
+  name: hello-busybox-pool
+  namespace: opensandbox
+spec:
+  template:
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: sandbox
+          image: busybox:1.37
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c", "sleep infinity"]
+  capacitySpec:
+    bufferMin: 1
+    bufferMax: 1
+    poolMin: 0
+    poolMax: 2
+  recycleStrategy:
+    type: Delete
