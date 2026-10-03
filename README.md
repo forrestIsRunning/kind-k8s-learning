@@ -41,3 +41,21 @@ kubectx -               # 切回上一个 context
 ## 集群配置
 
 见 [`cluster/kind.yaml`](./cluster/kind.yaml)。control-plane 映射了本机 `8080 -> 80`、`8443 -> 443`，方便以后加 Ingress；第一版不安装 Ingress Controller。
+
+## agent-sandbox（kubernetes-sigs）
+
+kind 节点访问不了本机 `127.0.0.1:1087` 代理，所以镜像要在宿主机 `docker pull` 后再导入节点。不要跑上游 `make deploy-kind`：它会 **重建** 名为 `agent-sandbox` 的集群。
+
+已安装版本：`v1.0.5`（`sandbox-with-extensions.yaml`）。
+
+```bash
+kubectx kind-k8s-lab
+
+# 控制器
+kubectl -n agent-sandbox-system get pods
+
+# 示例沙箱
+kubectl apply -f manifests/agent-sandbox/hello-sandbox.yaml
+kubectl get sandbox,pod,svc -n agent-sandbox-demo
+kubectl exec -n agent-sandbox-demo hello-busybox -- echo ok
+```

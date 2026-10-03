@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agent-sandbox-demo
+---
+apiVersion: agents.x-k8s.io/v1beta1
+kind: Sandbox
+metadata:
+  name: hello-busybox
+  namespace: agent-sandbox-demo
+spec:
+  service: true
+  podTemplate:
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: sandbox
+          image: busybox:1.37
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c", "sleep infinity"]
