@@ -2,7 +2,7 @@
 
 本地 kind 集群，用来跑 Kubernetes sandbox operator（agent-sandbox、OpenSandbox、CubeSandbox 控制面）。1 个 control-plane + 1 个 worker。
 
-GitHub：https://github.com/forrestIsRunning/kind-sandbox-lab（旧名 `kind-k8s-learning` 会跳转）。本地目录仍是 `~/Projects/personal/kind-k8s-learning`。
+GitHub：https://github.com/forrestIsRunning/kind-sandbox-lab（旧名 `kind-k8s-learning` 会跳转）。本地目录：`~/Projects/personal/kind-sandbox-lab`。
 
 kind 里的 control-plane 就是常见文档里的 master。`make create` 会把 context `kind-k8s-lab` 加进 `kubectx`，但保持当前 context 不变。
 
@@ -20,7 +20,7 @@ kubectl version --client
 ## 使用
 
 ```bash
-cd ~/Projects/personal/kind-k8s-learning
+cd ~/Projects/personal/kind-sandbox-lab
 
 make create
 make nodes

@@ -4,7 +4,7 @@
 
 这不是 2026-09-28 那份全仓库静态调研 [`OpenSandbox.md`](./OpenSandbox.md)。那份覆盖协议、SDK、server、fast-sandbox 运行时。本文只覆盖 **L2 编排层的 CR + Operator**，证据来自本机 Helm 安装、源码阅读、以及 `hello-busybox-pool` / `hello-busybox` 的创建、分配、exec、Delete 回收。
 
-源码路径默认相对于上游仓库 `opensandbox-group/OpenSandbox`。本机 clone 在 `/Users/xiaoxia/Projects/experiments/sandbox/OpenSandbox`。lab 清单在 `~/Projects/personal/kind-k8s-learning/manifests/opensandbox/`。
+源码路径默认相对于上游仓库 `opensandbox-group/OpenSandbox`。本机 clone 在 `/Users/xiaoxia/Projects/experiments/sandbox/OpenSandbox`。lab 清单在 `~/Projects/personal/kind-sandbox-lab/manifests/opensandbox/`。
 
 已安装版本：Helm chart `base-1.1.0` + `opensandbox-controller-1.1.0`，控制器镜像 `sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/controller:release-1.1.0`。
 
@@ -430,23 +430,23 @@ Helm 安装命令（lab kubeconfig，不要 export 到全局）：
 cd ~/Projects/experiments/sandbox/OpenSandbox
 
 helm upgrade --install opensandbox-base manifests/charts/base \
-  --kubeconfig ~/Projects/personal/kind-k8s-learning/.kube/config \
+  --kubeconfig ~/Projects/personal/kind-sandbox-lab/.kube/config \
   --set fastSandbox.crds.install=false \
   --set fastSandbox.namespaces.create=false
 
 helm upgrade --install opensandbox-controller manifests/charts/controller \
-  --kubeconfig ~/Projects/personal/kind-k8s-learning/.kube/config \
+  --kubeconfig ~/Projects/personal/kind-sandbox-lab/.kube/config \
   --namespace opensandbox-system --create-namespace
 ```
 
 hello：
 
 ```bash
-kubectl --kubeconfig ~/Projects/personal/kind-k8s-learning/.kube/config \
-  apply -f ~/Projects/personal/kind-k8s-learning/manifests/opensandbox/hello-pool.yaml
+kubectl --kubeconfig ~/Projects/personal/kind-sandbox-lab/.kube/config \
+  apply -f ~/Projects/personal/kind-sandbox-lab/manifests/opensandbox/hello-pool.yaml
 
-kubectl --kubeconfig ~/Projects/personal/kind-k8s-learning/.kube/config \
-  apply -f ~/Projects/personal/kind-k8s-learning/manifests/opensandbox/hello-batchsandbox.yaml
+kubectl --kubeconfig ~/Projects/personal/kind-sandbox-lab/.kube/config \
+  apply -f ~/Projects/personal/kind-sandbox-lab/manifests/opensandbox/hello-batchsandbox.yaml
 ```
 
 ## 12. 边界
@@ -468,7 +468,7 @@ kubectl --kubeconfig ~/Projects/personal/kind-k8s-learning/.kube/config \
 ## 13. 观察命令
 
 ```bash
-export KUBECONFIG=~/Projects/personal/kind-k8s-learning/.kube/config
+export KUBECONFIG=~/Projects/personal/kind-sandbox-lab/.kube/config
 
 kubectl -n opensandbox-system get deploy,pods
 kubectl -n opensandbox-system logs deploy/opensandbox-controller-manager --tail=50
