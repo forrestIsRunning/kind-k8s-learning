@@ -76,7 +76,7 @@ kubectl get pool,batchsandbox,pod -n opensandbox
 
 ## CubeSandbox 控制面（腾讯，0 CRD）
 
-Helm chart `cube-0.7.2`，**只开控制面**。Mac Docker Desktop / kind 节点没有 `/dev/kvm`，不要开 `cubeNode` 或 PVM bootstrap。控制面 Ready 不等于 microVM 在跑。说明见 [`docs/cubesandbox-controlplane.md`](./docs/cubesandbox-controlplane.md)。
+Helm chart `cube-0.7.2`，**只开控制面**。Mac Docker Desktop / kind 节点没有 `/dev/kvm`，不要开 `cubeNode` 或 PVM bootstrap。控制面 Ready 不等于 microVM 在跑。部署与调度见 [`docs/cubesandbox-controlplane.md`](./docs/cubesandbox-controlplane.md)。`POST /sandboxes` 从入口到 Cubelet workflow 见 [`docs/cubesandbox-request-flow.md`](./docs/cubesandbox-request-flow.md)。
 
 ```bash
 make cubesandbox-controlplane

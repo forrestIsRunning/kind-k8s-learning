@@ -2,7 +2,7 @@
 
 本文说明 `TencentCloud/CubeSandbox` 在 kind 集群 `k8s-lab` 上能跑起来的那一层：**控制面**。计算面（Cubelet / microVM / KVM / PVM）没有启用。
 
-这不是 2026-09-28 那份全仓库静态调研 [`CubeSandbox.md`](./CubeSandbox.md)。那份覆盖 hypervisor、Cubelet、envd、E2B 兼容深度。本文只覆盖本机实际安装的控制面，以及源码里「创建沙箱时怎么选节点」。
+这不是 2026-09-28 那份全仓库静态调研 [`CubeSandbox.md`](./CubeSandbox.md)。那份覆盖 hypervisor、Cubelet、envd、E2B 兼容深度。本文只覆盖本机实际安装的控制面，以及源码里「创建沙箱时怎么选节点」。一条 `POST /sandboxes` 从 CubeAPI 进门到 Cubelet workflow 的处理过程见 [`cubesandbox-request-flow.md`](./cubesandbox-request-flow.md)。
 
 源码路径默认相对于上游仓库 `TencentCloud/CubeSandbox`。本机 clone 在 `/Users/xiaoxia/Projects/experiments/sandbox/CubeSandbox`。lab values 在 `~/Projects/personal/kind-sandbox-lab/manifests/cubesandbox/values-controlplane.yaml`。
 
@@ -20,6 +20,8 @@
 8. [实验记录](#8-实验记录)
 9. [边界](#9-边界)
 10. [观察命令](#10-观察命令)
+
+创建请求逐步拆解：[`cubesandbox-request-flow.md`](./cubesandbox-request-flow.md)。
 
 ## 1. 定位
 
@@ -58,7 +60,7 @@ flowchart TB
   end
 
   USER["E2B SDK / curl"] --> API
-  API -->|"CreateSandbox RPC"| M
+  API -->|"HTTP POST /cube/sandbox"| M
   M --> DB
   M --> RD
   M -->|"调度 Select"| N
@@ -286,6 +288,8 @@ SELECT * FROM t_cube_template_definition WHERE alias_key = 'base' ... LIMIT 1   
 创建路径在「解析模板」处返回，**没有进入 `scheduler.Select`**。本机因此看不到 130597。空节点的直接证据是 `NODES_SCANNED 0/0`，不是这次 POST 的 HTTP 码。
 
 即便有模板，下一步也会在 `schedule()` 里碰到空节点并返回 130597。本机没有往 MySQL 里插入假模板，避免污染控制面状态。
+
+从 CubeAPI 入口到 Cubelet workflow 的完整逐步拆解见 [`cubesandbox-request-flow.md`](./cubesandbox-request-flow.md)。CubeAPI 到 CubeMaster 是 HTTP JSON（`POST /cube/sandbox`），gRPC 出现在 Master 到 Cubelet `:9999`。
 
 ## 7. 对照本机 k8s-lab
 
