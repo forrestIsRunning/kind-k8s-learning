@@ -2,7 +2,7 @@
 
 材料来自 2026-10-03 的官方文档，以及同一天用本机 API key 对 `https://api.e2b.app` 做的一次短时探活。SDK 版本是 Python `e2b` 2.52.0。
 
-这份笔记原来单独放在 <https://github.com/forrestIsRunning/e2b>，现已并入本仓库。和 kind 上的 SIG / OpenSandbox / Cube 对照见 [`../overview.md`](../overview.md)。
+这份笔记原先在独立仓库 `forrestIsRunning/e2b`，现已并入本仓库。和 kind 上的 SIG / OpenSandbox / Cube 对照见 [`../overview.md`](../overview.md)。
 
 ## 先说结论
 
