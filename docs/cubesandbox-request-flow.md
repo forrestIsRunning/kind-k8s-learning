@@ -2,7 +2,7 @@
 
 本文把 `POST /sandboxes` 从 CubeAPI 入口拆到 Cubelet workflow 和写库。对照 kind 集群 `k8s-lab` 上已安装的控制面（Helm chart `cube-0.7.2`），以及上游 `TencentCloud/CubeSandbox` 源码。
 
-部署、Helm values、五段调度器和本机安装记录见 [`cubesandbox-controlplane.md`](./cubesandbox-controlplane.md)。本文不重复那些内容，只补「一个请求进去之后发生了什么」。
+部署、Helm values、五段调度器和本机安装记录见 [`cubesandbox-controlplane.md`](./cubesandbox-controlplane.md)。本文不重复那些内容，只补「一个请求进去之后发生了什么」。托管 E2B 的对象模型（`templateID`、envd、pause）见 [`e2b/00-mental-model.md`](./e2b/00-mental-model.md)。CubeAPI 把同一套字段翻成 Master 报文；运行时是本机 Cube，不是 `api.e2b.app`。
 
 源码路径默认相对于上游仓库。本机 clone 在 `/Users/xiaoxia/Projects/experiments/sandbox/CubeSandbox`。
 

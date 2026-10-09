@@ -2,9 +2,9 @@
 
 本文说明 `TencentCloud/CubeSandbox` 在 kind 集群 `k8s-lab` 上能跑起来的那一层：**控制面**。计算面（Cubelet / microVM / KVM / PVM）没有启用。
 
-这不是 2026-09-28 那份全仓库静态调研 [`CubeSandbox.md`](./CubeSandbox.md)。那份覆盖 hypervisor、Cubelet、envd、E2B 兼容深度。本文只覆盖本机实际安装的控制面，以及源码里「创建沙箱时怎么选节点」。一条 `POST /sandboxes` 从 CubeAPI 进门到 Cubelet workflow 的处理过程见 [`cubesandbox-request-flow.md`](./cubesandbox-request-flow.md)。
+这不是 2026-09-28 那份全仓库静态调研 [`CubeSandbox.md`](./CubeSandbox.md)。那份覆盖 hypervisor、Cubelet、envd、E2B 兼容深度。本文只覆盖本机实际安装的控制面，以及源码里「创建沙箱时怎么选节点」。一条 `POST /sandboxes` 从 CubeAPI 进门到 Cubelet workflow 的处理过程见 [`cubesandbox-request-flow.md`](./cubesandbox-request-flow.md)。托管 E2B 的对象模型见 [`e2b/README.md`](./e2b/README.md)。
 
-源码路径默认相对于上游仓库 `TencentCloud/CubeSandbox`。本机 clone 在 `/Users/xiaoxia/Projects/experiments/sandbox/CubeSandbox`。lab values 在 `~/Projects/personal/kind-sandbox-lab/manifests/cubesandbox/values-controlplane.yaml`。
+源码路径默认相对于上游仓库 `TencentCloud/CubeSandbox`。本机 clone 在 `/Users/xiaoxia/Projects/experiments/sandbox/CubeSandbox`。lab values 在 `~/Projects/personal/sandbox-lab/manifests/cubesandbox/values-controlplane.yaml`。
 
 已安装版本：Helm chart `cube-0.7.2`，镜像 tag `v0.7.2`。Release 名 `cubesandbox`，namespace `cubesandbox-system`。
 
@@ -353,11 +353,11 @@ flowchart TB
 Helm 安装命令：
 
 ```bash
-kubectl --kubeconfig ~/Projects/personal/kind-sandbox-lab/.kube/config \
+kubectl --kubeconfig ~/Projects/personal/sandbox-lab/.kube/config \
   label node k8s-lab-worker cube.tencent.com/cube-control=true --overwrite
 
 # 先在宿主机 pull，再导入 kind。不要依赖节点直拉。
-cd ~/Projects/personal/kind-sandbox-lab
+cd ~/Projects/personal/sandbox-lab
 ./scripts/kind-load-image.sh \
   cube-sandbox-int.tencentcloudcr.com/cube-sandbox/cube-api:v0.7.2 \
   cube-sandbox-int.tencentcloudcr.com/cube-sandbox/cube-master:v0.7.2 \
@@ -368,9 +368,9 @@ cd ~/Projects/personal/kind-sandbox-lab
 
 helm upgrade --install cubesandbox \
   ~/Projects/experiments/sandbox/CubeSandbox/deploy/kubernetes/chart \
-  --kubeconfig ~/Projects/personal/kind-sandbox-lab/.kube/config \
+  --kubeconfig ~/Projects/personal/sandbox-lab/.kube/config \
   --namespace cubesandbox-system --create-namespace \
-  -f ~/Projects/personal/kind-sandbox-lab/manifests/cubesandbox/values-controlplane.yaml
+  -f ~/Projects/personal/sandbox-lab/manifests/cubesandbox/values-controlplane.yaml
 ```
 
 values 里的 MySQL / Redis 密码只用于这个 throwaway lab。chart 拒绝 `CHANGE_ME_*` 哨兵，所以必须覆盖。不要复用到非实验环境。
@@ -378,7 +378,7 @@ values 里的 MySQL / Redis 密码只用于这个 throwaway lab。chart 拒绝 `
 port-forward 验证：
 
 ```bash
-kubectl --kubeconfig ~/Projects/personal/kind-sandbox-lab/.kube/config \
+kubectl --kubeconfig ~/Projects/personal/sandbox-lab/.kube/config \
   -n cubesandbox-system port-forward svc/cubesandbox-api 13000:3000
 ```
 
@@ -399,7 +399,7 @@ kubectl --kubeconfig ~/Projects/personal/kind-sandbox-lab/.kube/config \
 ## 10. 观察命令
 
 ```bash
-export KUBECONFIG=~/Projects/personal/kind-sandbox-lab/.kube/config
+export KUBECONFIG=~/Projects/personal/sandbox-lab/.kube/config
 
 kubectl -n cubesandbox-system get deploy,sts,svc,pods -o wide
 kubectl -n cubesandbox-system get ds          # 预期 No resources

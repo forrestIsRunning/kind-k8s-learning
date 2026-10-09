@@ -1,0 +1,11 @@
+[project]
+name = "hello-sandbox"
+version = "0.1.0"
+description = "Create a short-lived E2B sandbox, print a few facts, then kill it."
+requires-python = ">=3.11"
+dependencies = [
+    "e2b>=2.52.0",
+]
+
+[tool.uv]
+package = false
