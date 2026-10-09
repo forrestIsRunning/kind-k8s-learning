@@ -26,20 +26,30 @@ agent-sandbox 是 sandbox orchestrator：把「一个有身份、可挂起、可
 Agent 运行时需要一人一环境：稳定身份、可挂起留卷、TTL 回收、可编程申领。Deployment 假设副本可替换；StatefulSet 是 N 副本序号模型；Job 是一次性。Sandbox 的模型是 **1 CR = 1 Pod**（加可选 headless Service 和可选 PVC）。
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TB
-  subgraph L2["L2 编排 / agent-sandbox"]
-    CR["Sandbox / Claim / Template / WarmPool"]
+  subgraph L2["L2 agent-sandbox"]
+    CR["Sandbox / Claim<br/>Template / WarmPool"]
     OP["agent-sandbox-controller"]
     CR --> OP
   end
 
-  subgraph L1["L1 运行时 本项目不实现隔离"]
+  subgraph L1["L1 运行时"]
     POD["Pod"]
-    RC["RuntimeClass: runc / gVisor / kata-*"]
+    RC["RuntimeClass<br/>runc / gVisor / kata-*"]
     POD --> RC
   end
 
-  OP -->|"ownerRef 创建或收养"| POD
+  OP -->|"ownerRef<br/>创建或收养"| POD
   USER["用户 / SDK / kubectl"] --> CR
 ```
 
@@ -57,14 +67,24 @@ flowchart TB
 `SandboxBlueprint`（`podTemplate` + `volumeClaimTemplates` + `service`）是 Sandbox 与 Template 的共享内核，定义在 `api/v1beta1/sandbox_types.go`。运行期字段只属于 Sandbox：`operatingMode`、`shutdownTime`、`shutdownPolicy`。
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TB
-  subgraph core["核心组 agents.x-k8s.io/v1beta1"]
+  subgraph core["agents.x-k8s.io/v1beta1"]
     SB["Sandbox<br/>podTemplate / VCT / service<br/>operatingMode / shutdownTime"]
   end
 
-  subgraph ext["扩展组 extensions.agents.x-k8s.io/v1beta1"]
-    ST["SandboxTemplate<br/>Blueprint + networkPolicy<br/>env/VCT injection policy"]
-    SWP["SandboxWarmPool<br/>replicas + sandboxTemplateRef<br/>updateStrategy Recreate 或 OnReplenish"]
+  subgraph ext["extensions.agents.x-k8s.io"]
+    ST["SandboxTemplate<br/>Blueprint + networkPolicy<br/>env / VCT injection policy"]
+    SWP["SandboxWarmPool<br/>replicas + sandboxTemplateRef<br/>updateStrategy<br/>Recreate 或 OnReplenish"]
     SC["SandboxClaim<br/>warmPoolRef 必填<br/>lifecycle / env / extra VCT"]
   end
 
@@ -74,7 +94,7 @@ flowchart TB
   SC -->|"收养或冷启动<br/>ownerRef 转到 Claim"| SB
   SB -->|"ownerRef"| POD["Pod"]
   SB -->|"可选"| SVC["headless Service"]
-  SB -->|"可选"| PVC["PVC 来自 volumeClaimTemplates"]
+  SB -->|"可选"| PVC["PVC<br/>来自 volumeClaimTemplates"]
 ```
 
 两条使用路径：
@@ -98,10 +118,20 @@ flowchart TB
 | SandboxTemplate | 1 | 共享 NetworkPolicy，串行即可 |
 
 ```mermaid
-flowchart LR
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
+flowchart TB
   API["kube-apiserver"]
 
-  subgraph mgr["Deployment agent-sandbox-controller"]
+  subgraph mgr["agent-sandbox-controller"]
     LE["leader-elect Lease"]
     R1["SandboxReconciler<br/>workers=100"]
     R2["SandboxClaimReconciler<br/>workers=50"]
@@ -110,10 +140,10 @@ flowchart LR
     Q["WarmSandboxQueue<br/>内存候选队列"]
   end
 
-  API -->|"watch Sandbox/Pod/Service"| R1
-  API -->|"watch Claim/Sandbox/Template/Pool"| R2
-  API -->|"watch WarmPool/Sandbox/Template"| R3
-  API -->|"watch Template/NetworkPolicy"| R4
+  API -->|"watch Sandbox<br/>Pod / Service"| R1
+  API -->|"watch Claim / Sandbox<br/>Template / Pool"| R2
+  API -->|"watch WarmPool<br/>Sandbox / Template"| R3
+  API -->|"watch Template<br/>NetworkPolicy"| R4
   R3 -->|"预热好的 Sandbox 入队"| Q
   R2 -->|"出队收养"| Q
   LE --> R1
@@ -126,28 +156,55 @@ flowchart LR
 `SandboxReconciler.Reconcile`（`controllers/sandbox_controller.go`）是核心语义的根。删除靠 ownerRef GC；Reconcile 看到 `deletionTimestamp` 直接返回。
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TD
-  A["Get Sandbox"] -->|NotFound| Z["清 write-behind clock 返回"]
-  A --> B{"deletionTimestamp?"}
+  A["Get Sandbox"] -->|NotFound| Z["清 write-behind clock<br/>然后返回"]
+  A --> B(["deletionTimestamp?"])
   B -->|是| Z
   B -->|否| C["补 trace-context 注解"]
-  C --> D{"now >= shutdownTime?"}
-  D -->|未过期| E["reconcileChildResources<br/>PVC 然后 Pod 然后 Service 然后 Conditions"]
-  E --> F["按剩余 TTL 设 RequeueAfter"]
-  F --> G{"write-behind 有 pending?"}
-  G -->|是| G1["RequeueAfter = min 现有与 window"]
+  C --> D(["now >= shutdownTime?"])
+  D -->|未过期| E["reconcileChildResources<br/>PVC → Pod → Service<br/>然后写 Conditions"]
+  E --> F["按剩余 TTL<br/>设 RequeueAfter"]
+  F --> G(["write-behind<br/>有 pending?"])
+  G -->|是| G1["RequeueAfter =<br/>min 现有与 window"]
   G -->|否| H["updateStatus"]
-  D -->|已过期且未打标| D1["Ready=False/SandboxExpired<br/>updateStatus 再 RequeueAfter 1ms"]
-  D -->|已打标 Expired| D2["handleSandboxExpiry<br/>只删自己拥有的 Pod/Service"]
-  D2 --> D3{"shutdownPolicy"}
-  D3 -->|Delete| D4["删 Sandbox 对象 跳过 status 写"]
+  G1 --> H
+  H --> I(["namespace<br/>terminating?"])
+  I -->|是| I1["RequeueAfter 30s<br/>防 403 风暴"]
+  I -->|否| END["return"]
+```
+
+过期路径单独画，避免一张图太高把后半截裁掉：
+
+```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
+flowchart TD
+  D(["shutdownTime 已过?"])
+  D -->|尚未打标 Expired| D1["Ready=False<br/>SandboxExpired<br/>updateStatus<br/>再 RequeueAfter 1ms"]
+  D -->|已打标 Expired| D2["handleSandboxExpiry<br/>只删自己拥有的<br/>Pod / Service"]
+  D2 --> D3(["shutdownPolicy"])
+  D3 -->|Delete| D4["删 Sandbox 对象<br/>跳过 status 写"]
   D3 -->|Retain 默认| D5["清空 live status<br/>保留 Expired condition"]
   D4 --> END["return"]
-  D5 --> H
-  G1 --> H
-  H --> I{"namespace terminating?"}
-  I -->|是| I1["RequeueAfter 30s 防 403 风暴"]
-  I -->|否| END
+  D5 --> H["updateStatus"]
 ```
 
 工程细节：
@@ -162,20 +219,30 @@ flowchart TD
 顺序固定。Service 在 Pod 映射歧义时不创建、不修改。
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TB
-  SB["Sandbox name=hello-busybox"]
+  SB["Sandbox<br/>name=hello-busybox"]
 
-  subgraph children["子资源 名字通常等于 Sandbox.Name"]
-    PVC["PVC: workspace-hello-busybox<br/>挂起时保留"]
-    POD["Pod: hello-busybox<br/>label sandbox-name-hash=FNV32"]
-    SVC["Service ClusterIP: None<br/>selector = 同一 hash"]
+  subgraph children["子资源"]
+    PVC["PVC<br/>workspace-hello-busybox<br/>挂起时保留"]
+    POD["Pod hello-busybox<br/>label sandbox-name-hash<br/>= FNV32"]
+    SVC["Service ClusterIP None<br/>selector = 同一 hash"]
   end
 
   SB -->|"1 reconcilePVCs"| PVC
   SB -->|"2 reconcilePod"| POD
-  SB -->|"3 reconcileService 若 spec.service=true"| SVC
-  POD -->|"status.podIPs / nodeName"| SB
-  SVC -->|"status.service / serviceFQDN"| SB
+  SB -->|"3 reconcileService<br/>若 spec.service=true"| SVC
+  POD -->|"status.podIPs<br/>nodeName"| SB
+  SVC -->|"status.service<br/>serviceFQDN"| SB
 ```
 
 身份锚点是 label：
@@ -199,22 +266,32 @@ agents.x-k8s.io/sandbox-name-hash = FNV-1a-32(sandbox.Name) 的 8 位 hex
 Pod 收养三态（PVC 对称，对应劫持修复 #784）：
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TD
-  FIND["按 hash index 与按名字 Get 找候选"]
-  FIND --> N{"ownedPods 数量"}
-  N -->|大于 1| M["Ready=False/MultiplePods<br/>不改 Service"]
-  N -->|0 或 1| OWN{"checkOwnership"}
+  FIND["按 hash index<br/>与按名字 Get 找候选"]
+  FIND --> N(["ownedPods 数量"])
+  N -->|大于 1| M["Ready=False<br/>MultiplePods<br/>不改 Service"]
+  N -->|0 或 1| OWN(["checkOwnership"])
   OWN -->|ownedByOther| R["拒绝并报错"]
-  OWN -->|unowned| AUTH{"adoptable=true<br/>或已有追踪 label?"}
+  OWN -->|unowned| AUTH(["adoptable=true<br/>或已有追踪 label?"])
   AUTH -->|否| R
   AUTH -->|是| ADOPT["SetControllerReference"]
-  OWN -->|ownedBySandbox| SYNC["同步 label/annotation"]
-  MODE{"operatingMode"}
+  OWN -->|ownedBySandbox| SYNC["同步 label / annotation"]
+  MODE(["operatingMode"])
   MODE -->|Suspended| DEL["只删自己拥有的 Pod<br/>PVC 留下"]
-  MODE -->|Running| CREATE["没有 Pod 则按 podTemplate 创建"]
+  MODE -->|Running| CREATE["没有 Pod 则按<br/>podTemplate 创建"]
   ADOPT --> SYNC
   SYNC --> MODE
-  CREATE --> READY["Ready 取决于 Pod Running+Ready+IP"]
+  CREATE --> READY["Ready 取决于 Pod<br/>Running + Ready + IP"]
 ```
 
 未授权的无主 Pod 不会被抢走。温池预热的 Pod 会打 `agents.x-k8s.io/adoptable=true`，Claim 才能合法收养。
@@ -224,6 +301,15 @@ flowchart TD
 `SandboxClaim.spec.warmPoolRef` 必填（`extensions/api/v1beta1/sandboxclaim_types.go`）。池 `replicas==0` 时用池自己的 Template 冷启动。Claim 写了 `spec.env` 或 `spec.volumeClaimTemplates` 也会冷启动：这些字段烤进 Pod spec，温池里正在跑的 Pod 注入不进去。
 
 ```mermaid
+---
+config:
+  sequence:
+    wrap: true
+    width: 180
+    noteFontSize: 12
+    messageFontSize: 13
+    useMaxWidth: false
+---
 sequenceDiagram
   participant U as 用户或 SDK
   participant C as SandboxClaim
@@ -232,15 +318,15 @@ sequenceDiagram
   participant S as Sandbox
   participant Pod as Pod
 
-  U->>T: 创建 Template 蓝图
-  U->>P: replicas=N sandboxTemplateRef=T
-  P->>S: 批量创建未申领 Sandbox
-  S->>Pod: 预热 Pod Ready 入内存队列
+  U->>T: 创建 Template
+  U->>P: replicas=N, ref=T
+  P->>S: 预热未申领 Sandbox
+  S->>Pod: Pod Ready 入队
   U->>C: warmPoolRef=P
-  C->>P: 出队一个候选
-  C->>S: 改 ownerRef 由 Claim 收养
-  Note over S,Pod: 温启动 亚秒级<br/>名字通常不等于 Claim 名
-  C->>C: status.sandbox.name/podIPs/serviceFQDN<br/>Ready 镜像自 Sandbox
+  C->>P: 出队候选
+  C->>S: Claim 收养 ownerRef
+  Note over S,Pod: 温启动亚秒级；名字通常不等于 Claim
+  Note over C: status 写 name / podIPs / FQDN；Ready 镜像自 Sandbox
 ```
 
 WarmPool 并发为 1。创建用 batch（默认 300）加 expectations 门控：本批 add event 到齐才发下一批。`--sandbox-warm-pool-replenish-delay` 可在 Claim 突发时推迟补货，把 apiserver 配额让给收养。
@@ -260,17 +346,23 @@ Claim status 镜像了 Sandbox 的 Ready、名字、PodIP、FQDN，所以 Python
 - 没有单独的 Running condition
 
 ```mermaid
+---
+config:
+  state:
+    htmlLabels: true
+    useMaxWidth: false
+---
 stateDiagram-v2
-  [*] --> Creating: 创建 Sandbox operatingMode=Running
-  Creating --> Ready: Pod Ready 且有 IP
-  Creating --> NotReady: DependenciesNotReady 或 Unschedulable
-  Ready --> SuspendedTerminating: spec.operatingMode=Suspended
-  SuspendedTerminating --> Suspended: Pod 已终止 PVC 仍在
-  Suspended --> Creating: operatingMode 改回 Running
-  Ready --> Expired: shutdownTime 到达
-  NotReady --> Expired: shutdownTime 到达
-  Expired --> [*]: shutdownPolicy=Delete
-  Expired --> ExpiredRetain: shutdownPolicy=Retain 对象留下
+  [*] --> Creating: create Running
+  Creating --> Ready: Pod Ready+IP
+  Creating --> NotReady: not ready
+  Ready --> SuspendedTerminating: Suspended
+  SuspendedTerminating --> Suspended: Pod gone
+  Suspended --> Creating: resume
+  Ready --> Expired: TTL
+  NotReady --> Expired: TTL
+  Expired --> [*]: Delete
+  Expired --> ExpiredRetain: Retain
 ```
 
 `Ready=False` 常见 reason：
@@ -307,15 +399,25 @@ sidecar（Istio / 监控）默认会被 default-deny 挡住，必须在 Template
 控制面把身份落在 label 和 headless DNS 上。数据面有三条路：
 
 ```mermaid
-flowchart LR
-  SDK["Go/Python SDK"]
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
+flowchart TB
+  SDK["Go / Python SDK"]
   R["sandbox-router<br/>按 X-Sandbox-* header"]
-  DNS["hello-busybox.agent-sandbox-demo.svc.cluster.local"]
-  PF["kubectl port-forward 或 SDK podtunnel"]
+  DNS["hello-busybox<br/>.agent-sandbox-demo<br/>.svc.cluster.local"]
+  PF["kubectl port-forward<br/>或 SDK podtunnel"]
   POD["Pod IP"]
 
   SDK -->|"集群内"| DNS --> POD
-  SDK -->|"集群外或 gVisor 不便 pf"| R --> POD
+  SDK -->|"集群外<br/>或 gVisor 不便 pf"| R --> POD
   SDK -->|"开发机"| PF --> POD
 ```
 
@@ -326,18 +428,28 @@ Router 用 Pod informer 缓存 IP，按 header 选后端。upstream 禁用 HTTP/
 ## 10. 对照本机 k8s-lab
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TB
-  subgraph kind["kind 集群 k8s-lab"]
+  subgraph kind["k8s-lab"]
     CP["k8s-lab-control-plane"]
     WK["k8s-lab-worker"]
 
-    subgraph sys["ns agent-sandbox-system"]
-      CTRL["controller v1.0.5<br/>args: --leader-elect --extensions"]
+    subgraph sys["agent-sandbox-system"]
+      CTRL["controller v1.0.5<br/>args: --leader-elect<br/>--extensions"]
     end
 
-    subgraph demo["ns agent-sandbox-demo"]
-      SB["Sandbox hello-busybox<br/>Ready=True DependenciesReady"]
-      POD["Pod hello-busybox<br/>busybox:1.37 sleep infinity"]
+    subgraph demo["agent-sandbox-demo"]
+      SB["Sandbox hello-busybox<br/>Ready=True<br/>DependenciesReady"]
+      POD["Pod hello-busybox<br/>busybox:1.37<br/>sleep infinity"]
       SVC["Service headless<br/>hash=74f04898"]
     end
   end

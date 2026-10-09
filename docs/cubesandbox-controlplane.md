@@ -28,12 +28,22 @@ CubeSandbox OSS 是「K8s 上部署的沙箱产品」，不是「K8s 原生 CR�
 控制面自己维护 MySQL + Redis + 一套与 kube-scheduler 平行的调度器。计算节点通过 Cubelet 向 CubeMaster / CubeOps 注册。没有 Cubelet，调度器的节点集合是空的。
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TB
   subgraph L3["L3 协议"]
-    API["CubeAPI :3000  E2B 形 HTTP"]
+    API["CubeAPI :3000<br/>E2B 形 HTTP"]
   end
 
-  subgraph L2["L2 控制面 本机已装"]
+  subgraph L2["L2 控制面"]
     M["CubeMaster :8089"]
     TC["CubeTemplateCenter :8090"]
     DB[(MySQL cube_mvp)]
@@ -41,10 +51,10 @@ flowchart TB
     CLI["cubemastercli"]
   end
 
-  subgraph L1["L1 计算面 本机未装"]
-    N["cube-node DaemonSet / Cubelet"]
-    KVM["/dev/kvm + 可选 PVM 内核"]
-    VM["Cloud Hypervisor microVM"]
+  subgraph L1["L1 计算面"]
+    N["cube-node DaemonSet<br/>Cubelet"]
+    KVM["/dev/kvm<br/>可选 PVM 内核"]
+    VM["Cloud Hypervisor<br/>microVM"]
   end
 
   USER["E2B SDK / curl"] --> API
@@ -134,16 +144,34 @@ chart 默认还带 `tolerations: cube.tencent.com/control=true:NoSchedule`。没
 ## 4. 控制面组件
 
 ```mermaid
-flowchart LR
-  API["Deployment cubesandbox-api :3000"]
-  M["Deployment cubesandbox-master :8089"]
-  TC["Deployment cubesandbox-templatecenter :8090"]
-  CLI["Deployment cubesandbox-cubemastercli"]
-  MY["StatefulSet cubesandbox-mysql"]
-  RD["StatefulSet cubesandbox-redis"]
-  PVC1["PVC cubesandbox-master-storage 2Gi"]
-  PVC2["PVC mysql-data 2Gi"]
-  PVC3["PVC redis-data 1Gi"]
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
+flowchart TB
+  subgraph deploy["Deployment"]
+    API["cubesandbox-api :3000"]
+    M["cubesandbox-master :8089"]
+    TC["cubesandbox-templatecenter :8090"]
+    CLI["cubesandbox-cubemastercli"]
+  end
+
+  subgraph sts["StatefulSet"]
+    MY["cubesandbox-mysql"]
+    RD["cubesandbox-redis"]
+  end
+
+  subgraph pvc["PVC"]
+    PVC1["master-storage 2Gi"]
+    PVC2["mysql-data 2Gi"]
+    PVC3["redis-data 1Gi"]
+  end
 
   API -->|"CUBE_MASTER"| M
   CLI --> M
@@ -193,14 +221,24 @@ TC 日志：`storage backend degraded requested=s3 effective=local-disk reason="
 入口：`CubeMaster/pkg/scheduler/schedule.go` 的 `Select`。创建沙箱时 `sandbox_run.go` 的 `schedule()` 调用它。节点为空时返回 `ErrorCode_SelectNodesNoRes = 130597`，文案 `no more resource`（`scheduler/init.go`）。
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TD
-  S["Select(selCtx)"] --> PRE["1 runPreFilter<br/>preSelector.Select 得到候选节点"]
-  PRE -->|空或失败| BO["backoffSelector 再选一次"]
-  PRE -->|有节点| F["2 runFilter 并行插件<br/>cpu / mem / template_locality / realtime_create_num"]
-  F -->|交集为空| BF["BackoffSelect 随机挑一个 backoff 节点"]
-  F -->|有交集| SC["3 runScoreFilter 加权打分"]
-  SC --> LR["4 LeastRandomSelect(PrioritySelectNum)<br/>本机配置 PrioritySelectNum=1"]
-  BO -->|仍空| ERR["130597 no more resource"]
+  S["Select(selCtx)"] --> PRE["1 runPreFilter<br/>preSelector.Select<br/>得到候选节点"]
+  PRE -->|空或失败| BO["backoffSelector<br/>再选一次"]
+  PRE -->|有节点| F["2 runFilter 并行插件<br/>cpu / mem<br/>template_locality<br/>realtime_create_num"]
+  F -->|交集为空| BF["BackoffSelect<br/>随机挑一个 backoff 节点"]
+  F -->|有交集| SC["3 runScoreFilter<br/>加权打分"]
+  SC --> LR["4 LeastRandomSelect<br/>PrioritySelectNum=1"]
+  BO -->|仍空| ERR["130597<br/>no more resource"]
   BF -->|仍空| ERR
   LR --> NODE["返回 *node.Node"]
 ```
@@ -252,11 +290,21 @@ SELECT * FROM t_cube_template_definition WHERE alias_key = 'base' ... LIMIT 1   
 ## 7. 对照本机 k8s-lab
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TB
-  subgraph kind["kind k8s-lab  2026-10-03"]
-    WK["k8s-lab-worker  label cube-control=true  无 /dev/kvm"]
+  subgraph kind["k8s-lab 2026-10-03"]
+    WK["k8s-lab-worker<br/>label cube-control=true<br/>无 /dev/kvm"]
 
-    subgraph cube["ns cubesandbox-system"]
+    subgraph cube["cubesandbox-system"]
       API["cube-api :3000"]
       M["cube-master :8089"]
       TC["templatecenter :8090"]
@@ -264,12 +312,12 @@ flowchart TB
       RD["redis-0"]
     end
 
-    subgraph os["ns opensandbox  仍在"]
-      P["Pool + BatchSandbox hello-busybox"]
+    subgraph os["opensandbox"]
+      P["Pool + BatchSandbox<br/>hello-busybox"]
     end
 
-    subgraph as["ns agent-sandbox-demo  仍在"]
-      SB["Sandbox hello-busybox Ready"]
+    subgraph as["agent-sandbox-demo"]
+      SB["Sandbox hello-busybox<br/>Ready"]
     end
   end
 

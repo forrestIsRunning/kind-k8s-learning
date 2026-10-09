@@ -31,22 +31,32 @@ OpenSandbox 的完整产品是「协议 + server + 可插拔运行时 + SDK」�
 隔离本身不在 Operator 里。Pod 走集群默认 RuntimeClass（kind 上是 runc）。`fast-sandbox`（Firecracker + Fastlet）是另一套 CRD（`sandbox.fast.io`），本机 Helm 安装时显式关掉了它。
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TB
-  subgraph L2["L2 编排 / OpenSandbox Operator"]
-    CR["BatchSandbox / Pool / SandboxSnapshot"]
+  subgraph L2["L2 OpenSandbox Operator"]
+    CR["BatchSandbox / Pool<br/>SandboxSnapshot"]
     OP["opensandbox-controller-manager"]
     CR --> OP
   end
 
-  subgraph L1["L1 运行时 本实验不装"]
+  subgraph L1["L1 运行时"]
     POD["Pod"]
-    RC["RuntimeClass: runc / gVisor / kata / fast-sandbox"]
+    RC["RuntimeClass<br/>runc / gVisor / kata<br/>fast-sandbox"]
     POD --> RC
   end
 
-  OP -->|"Pool 模式: ownerRef = Pool"| POD
-  OP -->|"Template 模式: ownerRef = BatchSandbox"| POD
-  USER["kubectl / OpenSandbox server"] --> CR
+  OP -->|"Pool 模式<br/>ownerRef = Pool"| POD
+  OP -->|"Template 模式<br/>ownerRef = BatchSandbox"| POD
+  USER["kubectl<br/>OpenSandbox server"] --> CR
 ```
 
 和 `kubernetes-sigs/agent-sandbox` 的差别：
@@ -74,6 +84,16 @@ API group：`sandbox.opensandbox.io/v1alpha1`。短名：`BatchSandbox` = `bsbx`
 | `SandboxSnapshot` | pause 时由控制器创建，驱动 image-committer Job 提交 rootfs | 否（未做 pause） |
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TB
   subgraph api["sandbox.opensandbox.io/v1alpha1"]
     P["Pool<br/>template + capacitySpec<br/>recycleStrategy"]
@@ -81,9 +101,9 @@ flowchart TB
     S["SandboxSnapshot<br/>rootfs-v1 或 qemu-v1"]
   end
 
-  B -->|"spec.poolRef 同 namespace"| P
-  P -->|"ownerRef 创建 Pod"| POD["Pod GenerateName=pool.Name-"]
-  B -->|"template 模式 ownerRef"| POD2["Pod name=bsbx.Name-idx"]
+  B -->|"spec.poolRef<br/>同 namespace"| P
+  P -->|"ownerRef 创建 Pod"| POD["Pod GenerateName<br/>= pool.Name-"]
+  B -->|"template 模式<br/>ownerRef"| POD2["Pod name<br/>= bsbx.Name-idx"]
   B -->|"pause=true"| S
   S -->|"Job"| COMMIT["image-committer"]
 ```
@@ -129,22 +149,32 @@ capacitySpec:
 镜像 tag 由 Helm helper 解析：未指定 tag 时用 `release-<appVersion>`，所以 chart `appVersion: 1.1.0` 对应 `controller:release-1.1.0`（`manifests/charts/controller/templates/_helpers.tpl`）。
 
 ```mermaid
-flowchart LR
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
+flowchart TB
   API["kube-apiserver"]
 
-  subgraph mgr["Deployment opensandbox-controller-manager"]
-    LE["leader-elect Lease 2fa1c467.opensandbox.io"]
-    R1["BatchSandboxReconciler workers=32"]
-    R2["PoolReconciler workers=16"]
+  subgraph mgr["opensandbox-controller"]
+    LE["leader-elect Lease<br/>2fa1c467.opensandbox.io"]
+    R1["BatchSandboxReconciler<br/>workers=32"]
+    R2["PoolReconciler<br/>workers=16"]
     R3["SandboxSnapshotReconciler"]
     A["Allocator 内存 store<br/>podName → sandboxName"]
   end
 
   API -->|"watch BatchSandbox / Pod"| R1
-  API -->|"watch Pool / Pod / BatchSandbox"| R2
+  API -->|"watch Pool / Pod<br/>BatchSandbox"| R2
   API -->|"watch SandboxSnapshot / Job"| R3
   R2 --> A
-  A -->|"patch 注解 alloc-status"| R1
+  A -->|"patch 注解<br/>alloc-status"| R1
   LE --> R1
 ```
 
@@ -160,14 +190,24 @@ Helm 分两张 chart：
 `IsPooledMode()` 的定义只有一句话：`return s.Spec.PoolRef != ""`（`internal/controller/strategy/pool_strategy_default.go`）。
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TD
   CREATE["创建 BatchSandbox"]
-  CREATE --> Q{"spec.poolRef 非空?"}
-  Q -->|否，走 template| T["BatchSandboxReconciler.scaleBatchSandbox<br/>创建 name-idx Pod<br/>ownerRef = BatchSandbox"]
-  Q -->|是| P{"spec.template 也有?"}
-  P -->|是| SKIP["PoolReconciler 列出 BatchSandbox 时跳过<br/>pool_controller.go:213"]
-  P -->|否| ALLOC["PoolReconciler → Allocator.Schedule<br/>从温缓冲挑 Ready Pod<br/>写 alloc-status 注解"]
-  ALLOC --> BUF["buffer 少了，scalePool 再造一颗"]
+  CREATE --> Q(["spec.poolRef 非空?"])
+  Q -->|否，走 template| T["scaleBatchSandbox<br/>创建 name-idx Pod<br/>ownerRef = BatchSandbox"]
+  Q -->|是| P(["spec.template 也有?"])
+  P -->|是| SKIP["PoolReconciler<br/>列出 BatchSandbox 时跳过<br/>pool_controller.go:213"]
+  P -->|否| ALLOC["Allocator.Schedule<br/>从温缓冲挑 Ready Pod<br/>写 alloc-status 注解"]
+  ALLOC --> BUF["buffer 少了<br/>scalePool 再造一颗"]
 ```
 
 关键事实：**Pool 模式下 BatchSandbox 控制器不创建 Pod**。`scaleBatchSandbox` 被 `!poolStrategy.IsPooledMode()` 挡住（`batchsandbox_controller.go` 约 217 行）。Pod 的 owner 是 Pool，名字是 `GenerateName = pool.Name + "-"`，例如 `hello-busybox-pool-k8hbx`。
@@ -183,22 +223,32 @@ Pool 列出待分配对象时，`Spec.Template != nil` 的 BatchSandbox 直接 `
 `BatchSandboxReconciler.Reconcile`（`internal/controller/batchsandbox_controller.go`）：
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TD
   A["Get BatchSandbox"] -->|NotFound| Z["return"]
-  A --> B{"expireTime 已过?"}
-  B -->|是且未删除| B1["Delete 整个 BatchSandbox"]
-  B -->|否| C{"poolRef == '*' ?"}
-  C -->|是| C1["assignPool 写回具体 pool 名"]
-  C -->|否| D{"deletionTimestamp?"}
+  A --> B(["expireTime 已过?"])
+  B -->|是且未删除| B1["Delete 整个<br/>BatchSandbox"]
+  B -->|否| C(["poolRef == '*' ?"])
+  C -->|是| C1["assignPool<br/>写回具体 pool 名"]
+  C -->|否| D(["deletionTimestamp?"])
   D -->|是且需要 task 清理| D1["task finalizer"]
   D -->|否| E["dispatchPauseResume"]
-  E --> F{"handled?"}
+  E --> F(["handled?"])
   F -->|是| Z
   F -->|否| G["listPods / calPodIndex"]
-  G --> H{"非 pooled 且非 Paused?"}
-  H -->|是| H1["scaleBatchSandbox 创建/对齐 name-idx Pod"]
+  G --> H(["非 pooled<br/>且非 Paused?"])
+  H -->|是| H1["scaleBatchSandbox<br/>创建/对齐 name-idx Pod"]
   H -->|否| I["buildRuntimeView"]
-  I --> J["persistRuntimeView 写 phase/ready/endpoints"]
+  I --> J["persistRuntimeView<br/>写 phase / ready / endpoints"]
 ```
 
 工程细节：
@@ -266,6 +316,15 @@ sandbox.opensandbox.io/pool-revision: <revision hash>
 本机 revision = `5a5271d362203693`。两个 Pod 的 owner 都是 `Pool/hello-busybox-pool`，**没有** BatchSandbox ownerRef。身份在注解，不在 ownerRef。
 
 ```mermaid
+---
+config:
+  sequence:
+    wrap: true
+    width: 180
+    noteFontSize: 12
+    messageFontSize: 13
+    useMaxWidth: false
+---
 sequenceDiagram
   participant U as kubectl
   participant P as Pool
@@ -274,14 +333,14 @@ sequenceDiagram
   participant B as BatchSandbox
   participant A as Allocator
 
-  U->>P: apply hello-busybox-pool bufferMin=1
+  U->>P: apply pool bufferMin=1
   PC->>Pod: createPoolPod GenerateName
-  Note over Pod: lz4br Running available=1
-  U->>B: apply hello-busybox poolRef replicas=1
-  PC->>A: Schedule sandboxes vs idle pods
-  A->>B: patch alloc-status / endpoints
-  Note over B,Pod: lz4br 被分配，owner 仍是 Pool
-  PC->>Pod: buffer 空了，再造 k8hbx
+  Note over Pod: lz4br Running, available=1
+  U->>B: apply BatchSandbox replicas=1
+  PC->>A: Schedule idle pods
+  A->>B: patch alloc-status
+  Note over B,Pod: lz4br 已分配；owner 仍是 Pool
+  PC->>Pod: buffer 空，再造 k8hbx
   Note over P: total=2 allocated=1 available=1
 ```
 
@@ -357,24 +416,34 @@ Pause 路径创建 `SandboxSnapshot`。phase：`Pending` / `Committing` / `Succe
 ## 10. 对照本机 k8s-lab
 
 ```mermaid
+---
+config:
+  flowchart:
+    htmlLabels: true
+    wrappingWidth: 200
+    padding: 12
+    useMaxWidth: false
+    rankSpacing: 35
+    nodeSpacing: 20
+---
 flowchart TB
-  subgraph kind["kind 集群 k8s-lab  2026-10-03"]
-    CP["k8s-lab-control-plane 172.20.0.2"]
-    WK["k8s-lab-worker 172.20.0.3 linuxkit 6.12.76 arm64"]
+  subgraph kind["k8s-lab 2026-10-03"]
+    CP["k8s-lab-control-plane<br/>172.20.0.2"]
+    WK["k8s-lab-worker 172.20.0.3<br/>linuxkit 6.12.76 arm64"]
 
-    subgraph sys["ns opensandbox-system"]
+    subgraph sys["opensandbox-system"]
       CTRL["controller release-1.1.0<br/>pod 10.244.1.6"]
     end
 
-    subgraph demo["ns opensandbox"]
-      POOL["Pool hello-busybox-pool<br/>total=2 allocated=1 available=1"]
-      BS["BatchSandbox hello-busybox<br/>phase=Succeed Ready=PodsReady"]
-      P1["Pod k8hbx 10.244.1.8 已分配"]
-      P2["Pod vxgkn 10.244.1.9 缓冲"]
+    subgraph demo["opensandbox"]
+      POOL["Pool hello-busybox-pool<br/>total=2 allocated=1<br/>available=1"]
+      BS["BatchSandbox hello-busybox<br/>phase=Succeed<br/>Ready=PodsReady"]
+      P1["Pod k8hbx<br/>10.244.1.8 已分配"]
+      P2["Pod vxgkn<br/>10.244.1.9 缓冲"]
     end
 
-    subgraph as["ns agent-sandbox-demo 未被这次安装打乱"]
-      SB["Sandbox hello-busybox Ready=True"]
+    subgraph as["agent-sandbox-demo"]
+      SB["Sandbox hello-busybox<br/>Ready=True"]
     end
   end
 
